@@ -2,7 +2,7 @@
 // Cargo.toml and Cargo.lock, and the C++ engine's CMakeLists.txt) and adds a dated section for it at the top of
 // CHANGELOG.md, ready for its release notes. The build stops until the section has at least one bullet.
 //
-//   node scripts/bump-version.ts <version>      (pnpm bump 1.2.0; there are no pre-releases)
+//   node scripts/bump-version.ts <version>      (pnpm bump 1.2.0, or 1.2.0-beta.1 for a beta)
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
