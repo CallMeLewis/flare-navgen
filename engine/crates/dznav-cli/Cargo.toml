@@ -1,0 +1,16 @@
+[package]
+name = "dznav-cli"
+description = "The dznav command-line tool, run by the desktop app as a sidecar"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "dznav"
+path = "src/main.rs"
+
+[dependencies]
+dznav.workspace = true
+serde_json.workspace = true
+ctrlc.workspace = true

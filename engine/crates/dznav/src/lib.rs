@@ -2,10 +2,15 @@
 
 mod bytes;
 pub mod capture;
+pub mod compare;
 mod error;
 pub mod format;
+pub mod generator;
 pub mod native;
+pub mod net;
+pub mod preview;
 mod reader;
+pub mod replay;
 pub mod world;
 
 pub use capture::{Capture, CaptureWriter};

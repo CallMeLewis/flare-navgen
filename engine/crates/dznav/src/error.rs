@@ -32,6 +32,10 @@ pub(crate) fn wire_err<T>(message: impl Into<String>) -> Result<T> {
     Err(Error::Wire(message.into()))
 }
 
+pub(crate) fn net_err<T>(message: impl Into<String>) -> Result<T> {
+    Err(Error::Net(message.into()))
+}
+
 pub(crate) fn io_err(action: &str, path: &Path) -> impl FnOnce(std::io::Error) -> Error {
     let context = format!("cannot {action} {}", path.display());
     move |source| Error::Io { context, source }
