@@ -1,0 +1,4 @@
+# Static C runtime, so dznav.exe runs (and ships inside the desktop app) without the VC++ redistributable. The cc crate
+# builds the C++ core with the matching runtime (/MT).
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

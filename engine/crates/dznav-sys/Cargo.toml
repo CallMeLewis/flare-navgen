@@ -1,0 +1,12 @@
+[package]
+name = "dznav-sys"
+description = "C++ core of the dznav engine: tile building on the DayZ-patched Recast, and the patched Detour"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+links = "dznav_core"
+build = "build.rs"
+
+[build-dependencies]
+cc.workspace = true

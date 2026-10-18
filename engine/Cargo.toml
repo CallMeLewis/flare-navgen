@@ -1,0 +1,18 @@
+# The dznav engine in Rust. dznav-sys is the C++ core (tile building and Detour on the patched Recast & Detour in
+# third_party/), dznav the library around it, dznav-cli the `dznav` binary the app runs as a sidecar.
+[workspace]
+resolver = "3"
+members = ["crates/dznav-sys"]
+
+[workspace.package]
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.90"
+repository = "https://github.com/CallMeLewis/flare-navgen"
+
+[workspace.dependencies]
+cc = "1.2"
+
+# Recast is slow unoptimised; build the C++ core optimised even in dev builds.
+[profile.dev.package.dznav-sys]
+opt-level = 3
