@@ -27,7 +27,8 @@ const edits = [
   edited("app/package.json", /^(\s*"version":\s*")[^"]+(")/m),
   edited("app/src-tauri/Cargo.toml", /^(version\s*=\s*")[^"]+(")/m),
   edited("app/src-tauri/Cargo.lock", new RegExp(`^(name = "${name}"\\r?\\nversion = ")[^"]+(")`, "m")),
-  edited("CMakeLists.txt", /^(project\(dznav VERSION )[\d.]+( )/m),
+  // CMake versions are numbers only, so a beta's is the version it leads up to.
+  editedTo("CMakeLists.txt", version.split("-")[0], /^(project\(dznav VERSION )[\d.]+( )/m),
   // The first version in the engine's Cargo.toml is the workspace's, which its crates share.
   edited("engine/Cargo.toml", /^(version\s*=\s*")[^"]+(")/m),
   edited(
@@ -52,10 +53,14 @@ console.log("Write its release notes in CHANGELOG.md, following docs/release-not
 console.log("Then commit, push and run pnpm release.\n");
 
 function edited(file: string, ...patterns: RegExp[]): [string, string] {
+  return editedTo(file, version, ...patterns);
+}
+
+function editedTo(file: string, value: string, ...patterns: RegExp[]): [string, string] {
   let text = readFileSync(path(file), "utf8");
   for (const pattern of patterns) {
     if (!pattern.test(text)) fail(`Couldn't find the version in ${file}.`);
-    text = text.replace(pattern, `$1${version}$2`);
+    text = text.replace(pattern, `$1${value}$2`);
   }
   return [file, text];
 }
