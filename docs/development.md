@@ -1,19 +1,43 @@
 # Developing Flare Navgen
 
-Flare Navgen is two parts: the `dznav` engine (C++20, at the repository root) and the desktop app (Tauri v2, React,
-TypeScript, Tailwind CSS and shadcn/ui, in [`app/`](../app/)), which runs the engine underneath.
+Flare Navgen is two parts: the `dznav` engine (Rust, with a C++ core, in [`engine/`](../engine/)) and the desktop app
+(Tauri v2, React, TypeScript, Tailwind CSS and shadcn/ui, in [`app/`](../app/)), which runs the engine underneath.
 
 ## Build the engine
 
-Requires CMake 3.24+ and a C++20 compiler (tested with MSVC 14.51 / Visual Studio 2026).
+Requires Rust (the version in `rust-toolchain.toml`) and a C++20 compiler (tested with MSVC 14.51 / Visual Studio
+2026), which Cargo finds itself.
+
+```sh
+cd engine
+cargo build --release      # engine/target/release/dznav.exe
+cargo test
+```
+
+It is a Cargo workspace:
+
+- `dznav-sys`: the C++ core, which stays C++: tile building (`TileBuilder`, `JumpLinks` in `src/dznav/`) and Detour
+  linking on the patched Recast & Detour, built with the `cc` crate behind the C interface in `cpp/dznav_core.h`.
+- `dznav`: the library: the navmesh format (with `NavMeshReader`, which maps a file and reads tiles on demand), the
+  data-server protocol, captures, generation, the replay server, comparison and previews.
+- `dznav-cli`: the `dznav` binary.
+
+Some tests compare with real data and only run when given it. Run them with `--release`:
+
+- `DZNAV_SAMPLE_NM`: shipped `.nm` files, or folders of them, separated like `PATH`. Round trips and relinks them.
+- `DZNAV_ORACLE`: the C++ engine's `dznav` executable. Runs both engines on the same inputs (a synthetic world, a
+  replay server, and the samples) and requires the same files and output.
+
+### The C++ engine
+
+The engine was C++ before it was ported to Rust. Its build stays, as the reference the Rust engine is checked against,
+until the Rust engine has been in use for a while. Requires CMake 3.24+.
 
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build
+cmake --build build        # build/src/cli/dznav.exe
+ctest --test-dir build
 ```
-
-Tests: `ctest --test-dir build`. Set `DZNAV_SAMPLE_NM` to a folder of shipped `.nm` files before
-configuring to add round-trip and relink tests against them.
 
 ## Run the app
 
@@ -29,7 +53,7 @@ Both are patched for DayZ, and every change is marked `DAYZ:`.
 ## Releasing
 
 CI (`.github/workflows/ci.yml`) builds the engine and the installer on every push to `main` and every pull request,
-runs the engine's tests, and checks that the installed app starts. To release:
+runs the engine's tests (against the C++ engine too), and checks that the installed app starts. To release:
 
 1. In `app/`, run `pnpm bump <version>`, then write the version's notes in [`CHANGELOG.md`](../CHANGELOG.md) following
    [release-notes.md](release-notes.md).

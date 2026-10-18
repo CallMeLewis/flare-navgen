@@ -95,7 +95,9 @@ jobs:
         run: rustup toolchain install
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          workspaces: app/src-tauri
+          workspaces: |
+            app/src-tauri
+            engine
           save-if: ${{ github.ref == 'refs/heads/main' }}
       # Tauri expects the built frontend and the engine to exist; the checks need neither, so empty stand-ins will do.
       - run: mkdir -p ../dist binaries && touch binaries/dznav-x86_64-pc-windows-msvc.exe
@@ -105,6 +107,12 @@ jobs:
         run: cargo clippy --all-targets --locked -- -D warnings
       - name: Test
         run: cargo test --locked
+      - name: Engine formatted
+        working-directory: engine
+        run: cargo fmt --check
+      - name: Engine clippy
+        working-directory: engine
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   windows:
     name: Build for Windows
@@ -134,16 +142,27 @@ jobs:
         run: rustup toolchain install
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          workspaces: app/src-tauri
+          workspaces: |
+            app/src-tauri
+            engine
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      # The Visual Studio generator finds the compiler itself, so no developer prompt is needed. It builds into a folder
-      # per configuration, so the engine ends up in build/src/cli/Release.
-      - name: Build the engine
+      # The C++ engine, built while the Rust one is checked against it (engine/crates/dznav-cli/tests/parity.rs). The
+      # Visual Studio generator finds the compiler itself, so no developer prompt is needed. It builds into a folder per
+      # configuration, so the engine ends up in build/src/cli/Release.
+      - name: Build the C++ engine
         run: |
           cmake -S . -B build -A x64
           cmake --build build --config Release --parallel
-      - name: Test the engine
+      - name: Test the C++ engine
         run: ctest --test-dir build -C Release --output-on-failure
+      - name: Build the engine
+        working-directory: engine
+        run: cargo build --release --locked -p dznav-cli
+      - name: Test the engine, against the C++ one
+        working-directory: engine
+        run: cargo test --release --locked --workspace
+        env:
+          DZNAV_ORACLE: ${{ github.workspace }}/build/src/cli/Release/dznav.exe
       - run: pnpm install --frozen-lockfile
         working-directory: app
       # `pnpm dist` in two halves: compiled first, then bundled into the installer. When signing, the certificate is only
@@ -152,7 +171,7 @@ jobs:
       - run: pnpm exec tauri build --no-bundle
         working-directory: app
         env:
-          DZNAV_ENGINE_DIR: ${{ github.workspace }}/build/src/cli/Release
+          DZNAV_ENGINE_DIR: ${{ github.workspace }}/engine/target/release
       - name: Sign in to SimplySign
         id: certum
         if: inputs.sign
