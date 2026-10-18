@@ -125,6 +125,16 @@ static bool addSpan(rcHeightfield& hf,
 	rcSpan* previousSpan = NULL;
 	rcSpan* currentSpan = hf.spans[columnIndex];
 
+	// DAYZ: resume from the column's hint when it lies wholly below the new span. Every span up to it would only be
+	// stepped over, and in deep columns that walk is most of the rasterisation. Spans are only freed here, and the
+	// hint is reset below on every call, so it is always in the column.
+	rcSpan* hint = hf.hints ? hf.hints[columnIndex] : NULL;
+	if (hint && hint->smax < newSpan->smin)
+	{
+		previousSpan = hint;
+		currentSpan = hint->next;
+	}
+
 	// Insert the new span, possibly merging it with existing spans.
 	while (currentSpan != NULL)
 	{
@@ -186,6 +196,10 @@ static bool addSpan(rcHeightfield& hf,
 		// This span should go before the others in the list
 		newSpan->next = hf.spans[columnIndex];
 		hf.spans[columnIndex] = newSpan;
+	}
+	if (hf.hints)
+	{
+		hf.hints[columnIndex] = previousSpan; // DAYZ
 	}
 
 	return true;

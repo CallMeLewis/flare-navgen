@@ -17,10 +17,21 @@ tauri-build = { version = "2.7.3", features = [] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 log = "0.4"
-tauri = { version = "2.12.4", features = ["protocol-asset"] }
+tauri = { version = "2.12.4", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-flare-updater = { path = "../../../flare-common/crates/tauri-plugin-flare-updater" }
 tokio = { version = "1", features = ["time"] }
+# The engine's library, for reading navmeshes in Inspect.
+dznav = { path = "../../engine/crates/dznav" }
+
+# Inspect reads navmeshes of a gigabyte through the engine's library, which is slow unoptimised, so it's optimised even
+# in dev builds.
+[profile.dev.package.dznav]
+opt-level = 3
+[profile.dev.package.dznav-sys]
+opt-level = 3
+[profile.dev.package.bytemuck]
+opt-level = 3

@@ -78,6 +78,20 @@ void rcFilterLedgeSpans(rcContext* context, const int walkableHeight, const int 
 	{
 		for (int x = 0; x < xSize; ++x)
 		{
+			// DAYZ: neighbour spans are visited from a cursor per direction instead of from the bottom of the column,
+			// which is slow in deep columns. Columns are sorted, so the neighbour spans whose gap can pass the test
+			// below are a run that only moves up as the span does: a gap ending at or below bot + walkableHeight
+			// fails for this span and every higher one, and once a gap starts at or above top - walkableHeight, it
+			// and every gap above it fail. The result is the same as scanning whole columns.
+			const rcSpan* cursors[4];
+			for (int direction = 0; direction < 4; ++direction)
+			{
+				const int dx = x + rcGetDirOffsetX(direction);
+				const int dy = z + rcGetDirOffsetY(direction);
+				const bool inside = dx >= 0 && dy >= 0 && dx < xSize && dy < zSize;
+				cursors[direction] = inside ? heightfield.spans[dx + dy * xSize] : NULL;
+			}
+
 			for (rcSpan* span = heightfield.spans[x + z * xSize]; span; span = span->next)
 			{
 				// Skip non walkable spans.
@@ -119,10 +133,15 @@ void rcFilterLedgeSpans(rcContext* context, const int walkableHeight, const int 
 					}
 
 					// Rest of the spans.
-					for (neighborSpan = heightfield.spans[dx + dy * xSize]; neighborSpan; neighborSpan = neighborSpan->next)
+					const rcSpan*& cursor = cursors[direction]; // DAYZ
+					while (cursor && (cursor->next ? (int)cursor->next->smin : MAX_HEIGHT) <= bot + walkableHeight)
+						cursor = cursor->next;
+					for (neighborSpan = cursor; neighborSpan; neighborSpan = neighborSpan->next)
 					{
 						neighborBot = (int)neighborSpan->smax;
 						neighborTop = neighborSpan->next ? (int)neighborSpan->next->smin : MAX_HEIGHT;
+						if (neighborBot >= top - walkableHeight) // DAYZ
+							break;
 
 						// Skip neighbour if the gap between the spans is too small.
 						if (rcMin(top, neighborTop) - rcMax(bot, neighborBot) > walkableHeight)

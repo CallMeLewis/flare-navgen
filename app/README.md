@@ -1,14 +1,13 @@
 # Flare Navgen: desktop app
 
-Tauri v2 + React + TypeScript + Tailwind CSS v4 + shadcn/ui. It drives the `dznav` engine (built
-from the repository root) as a bundled sidecar, through the engine's JSON output
-([../docs/cli-json.md](../docs/cli-json.md)). Design rules:
+Tauri v2 + React + TypeScript + Tailwind CSS v4 + shadcn/ui. It drives the `dznav` engine (in
+[../engine/](../engine/)) as a bundled sidecar, through the engine's JSON output
+([../docs/cli-json.md](../docs/cli-json.md)), and reads navmeshes for Inspect through the engine's library. Design rules:
 [../docs/design.md](../docs/design.md).
 
 ## Develop
 
-Needs Node 22+, pnpm, Rust (stable, MSVC on Windows) and a built engine (`cmake --build build` at
-the repository root).
+Needs Node 22+, pnpm, and Rust with a C++ compiler (MSVC on Windows), for the app and the engine.
 
 The updater, much of the interface and the release script are shared by the Flare apps, in the private
 [flare-common](https://github.com/CallMeLewis/flare-common) repo, which the app links to from beside this repo. Check it
@@ -19,7 +18,7 @@ git clone https://github.com/CallMeLewis/flare-common ../../flare-common
 git -C ../../flare-common checkout "$(cat ../.flare-common-version)"
 pnpm --dir ../../flare-common install
 pnpm install
-pnpm tauri dev      # copies build/src/cli/dznav.exe into src-tauri/binaries/, then runs the app
+pnpm tauri dev      # builds the engine, copies it into src-tauri/binaries/, then runs the app
 pnpm tauri build    # installers in src-tauri/target/release/bundle/
 ```
 
@@ -41,3 +40,5 @@ engine" in the status bar), for working on the interface without the desktop she
   settings dialog and update button (`@flare/ui`), and the release script (`@flare/release`, used by
   `scripts/release.ts`).
 - `src-tauri/src/engine.rs`: starts `dznav --json`, streams its output, stops (`stop` on stdin) or kills it.
+- `src-tauri/src/inspect.rs` and `src/lib/inspector.ts`: Inspect reads navmeshes in process, through the engine's
+  library.

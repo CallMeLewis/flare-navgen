@@ -1,8 +1,8 @@
-// Sets a new version everywhere it's written (app/package.json, which tauri.conf.json reads, Cargo.toml, Cargo.lock
-// and the engine's CMakeLists.txt) and adds a dated section for it at the top of CHANGELOG.md, ready for its release
-// notes. The build stops until the section has at least one bullet.
+// Sets a new version everywhere it's written (app/package.json, which tauri.conf.json reads, the app's and the engine's
+// Cargo.toml and Cargo.lock, and the C++ engine's CMakeLists.txt) and adds a dated section for it at the top of
+// CHANGELOG.md, ready for its release notes. The build stops until the section has at least one bullet.
 //
-//   node scripts/bump-version.ts <version>      (pnpm bump 1.2.0; there are no pre-releases)
+//   node scripts/bump-version.ts <version>      (pnpm bump 1.2.0, or 1.2.0-beta.1 for a beta)
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,6 +28,12 @@ const edits = [
   edited("app/src-tauri/Cargo.toml", /^(version\s*=\s*")[^"]+(")/m),
   edited("app/src-tauri/Cargo.lock", new RegExp(`^(name = "${name}"\\r?\\nversion = ")[^"]+(")`, "m")),
   edited("CMakeLists.txt", /^(project\(dznav VERSION )[\d.]+( )/m),
+  // The first version in the engine's Cargo.toml is the workspace's, which its crates share.
+  edited("engine/Cargo.toml", /^(version\s*=\s*")[^"]+(")/m),
+  edited(
+    "engine/Cargo.lock",
+    ...["dznav", "dznav-cli", "dznav-sys"].map((crate) => new RegExp(`^(name = "${crate}"\\r?\\nversion = ")[^"]+(")`, "m")),
+  ),
 ];
 
 const changelog = readFileSync(path("CHANGELOG.md"), "utf8");
@@ -45,10 +51,13 @@ console.log(`\nVersion ${current} -> ${version}.\n`);
 console.log("Write its release notes in CHANGELOG.md, following docs/release-notes.md.");
 console.log("Then commit, push and run pnpm release.\n");
 
-function edited(file: string, pattern: RegExp): [string, string] {
-  const text = readFileSync(path(file), "utf8");
-  if (!pattern.test(text)) fail(`Couldn't find the version in ${file}.`);
-  return [file, text.replace(pattern, `$1${version}$2`)];
+function edited(file: string, ...patterns: RegExp[]): [string, string] {
+  let text = readFileSync(path(file), "utf8");
+  for (const pattern of patterns) {
+    if (!pattern.test(text)) fail(`Couldn't find the version in ${file}.`);
+    text = text.replace(pattern, `$1${version}$2`);
+  }
+  return [file, text];
 }
 
 function today() {
