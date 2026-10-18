@@ -2,7 +2,7 @@
 # third_party/), dznav the library around it, dznav-cli the `dznav` binary the app runs as a sidecar.
 [workspace]
 resolver = "3"
-members = ["crates/dznav-sys"]
+members = ["crates/dznav-sys", "crates/dznav"]
 
 [workspace.package]
 version = "0.2.0"
@@ -11,7 +11,11 @@ rust-version = "1.90"
 repository = "https://github.com/CallMeLewis/flare-navgen"
 
 [workspace.dependencies]
+dznav-sys = { path = "crates/dznav-sys" }
+bytemuck = { version = "1.25", features = ["derive", "min_const_generics"] }
 cc = "1.2"
+memmap2 = "0.9"
+thiserror = "2"
 
 # Recast is slow unoptimised; build the C++ core optimised even in dev builds.
 [profile.dev.package.dznav-sys]
