@@ -26,7 +26,11 @@ if (!name) fail("Couldn't find the package name in app/src-tauri/Cargo.toml.");
 const edits = [
   edited("app/package.json", /^(\s*"version":\s*")[^"]+(")/m),
   edited("app/src-tauri/Cargo.toml", /^(version\s*=\s*")[^"]+(")/m),
-  edited("app/src-tauri/Cargo.lock", new RegExp(`^(name = "${name}"\\r?\\nversion = ")[^"]+(")`, "m")),
+  // The app's lock file also has the engine crates the app uses.
+  edited(
+    "app/src-tauri/Cargo.lock",
+    ...[name, "dznav", "dznav-sys"].map((crate) => new RegExp(`^(name = "${crate}"\\r?\\nversion = ")[^"]+(")`, "m")),
+  ),
   // CMake versions are numbers only, so a beta's is the version it leads up to.
   editedTo("CMakeLists.txt", version.split("-")[0], /^(project\(dznav VERSION )[\d.]+( )/m),
   // The first version in the engine's Cargo.toml is the workspace's, which its crates share.
