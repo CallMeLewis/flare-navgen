@@ -11,11 +11,12 @@ pub mod net;
 pub mod preview;
 mod reader;
 pub mod replay;
+pub mod summary;
 pub mod world;
 
 pub use capture::{Capture, CaptureWriter};
 pub use error::{Error, Result};
 pub use format::{NavMeshFile, Tile};
 pub use native::{BuiltTile, DoorStatePolicy, NavMeshAssembly, TileBuildOptions, TileBuildStats, build_tile};
-pub use reader::{NavMeshReader, TileEntry};
+pub use reader::{NavMeshIndex, NavMeshReader, TileEntry};
 pub use world::{TileInput, WorldParams};

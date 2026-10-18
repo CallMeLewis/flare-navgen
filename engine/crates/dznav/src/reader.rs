@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
+use std::sync::Arc;
 
 use memmap2::Mmap;
 
@@ -37,38 +38,21 @@ impl TileEntry {
     }
 }
 
-/// A navmesh file indexed by tile. `B` holds the file's bytes: a memory map from [`NavMeshReader::open`], or any byte
-/// buffer.
-pub struct NavMeshReader<B = Mmap> {
-    bytes: B,
-    header: SetHeader,
-    tiles: Vec<TileEntry>,
+/// Where every tile of a navmesh file is. It can be kept while the file is closed, and used again with the same
+/// bytes (see [`NavMeshReader::with_index`]).
+#[derive(Clone, Debug)]
+pub struct NavMeshIndex {
+    pub header: SetHeader,
+    /// Every tile, in file order.
+    pub tiles: Vec<TileEntry>,
+    /// The file's size.
+    pub len: usize,
     by_cell: HashMap<(i32, i32), usize>,
 }
 
-impl NavMeshReader<Mmap> {
-    /// Maps a navmesh file and indexes its tiles.
-    ///
-    /// The file stays mapped, and so open, until the reader is dropped. On Windows that also means nothing can replace
-    /// or truncate it in the meantime.
-    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
-        let path = path.as_ref();
-        let file = File::open(path).map_err(io_err("open", path))?;
-        if file.metadata().map_err(io_err("read", path))?.len() == 0 {
-            return format_err("unexpected end of data");
-        }
-        // SAFETY: the map is only read, and every read is bounds-checked against the length it had when mapped.
-        // Windows refuses to truncate a mapped file; if another process rewrites its bytes meanwhile, tiles read
-        // after that can be inconsistent but are still validated before use.
-        let map = unsafe { Mmap::map(&file) }.map_err(io_err("map", path))?;
-        Self::from_bytes(map)
-    }
-}
-
-impl<B: AsRef<[u8]>> NavMeshReader<B> {
-    /// Indexes a navmesh held in memory.
-    pub fn from_bytes(bytes: B) -> Result<Self> {
-        let data = bytes.as_ref();
+impl NavMeshIndex {
+    /// Indexes a navmesh's bytes, checking every record and tile header.
+    pub fn build(data: &[u8]) -> Result<NavMeshIndex> {
         let mut r = Cursor::new(data, Error::Format);
         let header: SetHeader = r.read()?;
         if header.magic != SET_MAGIC {
@@ -114,33 +98,93 @@ impl<B: AsRef<[u8]>> NavMeshReader<B> {
             });
             pos = offset + data_size;
         }
-        Ok(Self { bytes, header, tiles, by_cell })
-    }
-
-    pub fn header(&self) -> &SetHeader {
-        &self.header
-    }
-
-    /// Every tile, in file order.
-    pub fn tiles(&self) -> &[TileEntry] {
-        &self.tiles
+        Ok(NavMeshIndex { header, tiles, len: data.len(), by_cell })
     }
 
     /// The index of the tile at a grid cell (the first one in the file, if there are several).
     pub fn find(&self, x: i32, z: i32) -> Option<usize> {
         self.by_cell.get(&(x, z)).copied()
     }
+}
+
+/// A navmesh file indexed by tile. `B` holds the file's bytes: a memory map from [`NavMeshReader::open`], or any byte
+/// buffer.
+pub struct NavMeshReader<B = Mmap> {
+    bytes: B,
+    index: Arc<NavMeshIndex>,
+}
+
+/// Maps a file for reading.
+fn map(path: &Path) -> Result<Mmap> {
+    let file = File::open(path).map_err(io_err("open", path))?;
+    if file.metadata().map_err(io_err("read", path))?.len() == 0 {
+        return format_err("unexpected end of data");
+    }
+    // SAFETY: the map is only read, and every read is bounds-checked against the length it had when mapped.
+    // Windows refuses to truncate a mapped file; if another process rewrites its bytes meanwhile, tiles read
+    // after that can be inconsistent but are still validated before use.
+    unsafe { Mmap::map(&file) }.map_err(io_err("map", path))
+}
+
+impl NavMeshReader<Mmap> {
+    /// Maps a navmesh file and indexes its tiles.
+    ///
+    /// The file stays mapped, and so open, until the reader is dropped. On Windows that also means nothing can replace
+    /// or truncate it in the meantime.
+    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
+        Self::from_bytes(map(path.as_ref())?)
+    }
+
+    /// Maps a navmesh file indexed before. Fails if its size has changed since.
+    pub fn open_indexed(path: impl AsRef<Path>, index: Arc<NavMeshIndex>) -> Result<Self> {
+        Self::with_index(map(path.as_ref())?, index)
+    }
+}
+
+impl<B: AsRef<[u8]>> NavMeshReader<B> {
+    /// Indexes a navmesh held in memory.
+    pub fn from_bytes(bytes: B) -> Result<Self> {
+        let index = Arc::new(NavMeshIndex::build(bytes.as_ref())?);
+        Ok(Self { bytes, index })
+    }
+
+    /// Reads bytes indexed before. Fails if their size isn't the indexed file's.
+    pub fn with_index(bytes: B, index: Arc<NavMeshIndex>) -> Result<Self> {
+        if bytes.as_ref().len() != index.len {
+            return format_err("the navmesh changed while it was open");
+        }
+        Ok(Self { bytes, index })
+    }
+
+    pub fn index(&self) -> &Arc<NavMeshIndex> {
+        &self.index
+    }
+
+    pub fn header(&self) -> &SetHeader {
+        &self.index.header
+    }
+
+    /// Every tile, in file order.
+    pub fn tiles(&self) -> &[TileEntry] {
+        &self.index.tiles
+    }
+
+    /// The index of the tile at a grid cell (the first one in the file, if there are several).
+    pub fn find(&self, x: i32, z: i32) -> Option<usize> {
+        self.index.find(x, z)
+    }
 
     /// The raw tile blob of tile `index`.
     pub fn tile_bytes(&self, index: usize) -> &[u8] {
-        let e = &self.tiles[index];
+        let e = &self.index.tiles[index];
         &self.bytes.as_ref()[e.offset..e.offset + e.data_size]
     }
 
     /// Parses tile `index`.
     pub fn tile(&self, index: usize) -> Result<Tile> {
-        let mut t = Tile::parse(self.tile_bytes(index), self.tiles[index].tile_ref)?;
-        t.record_pad = self.tiles[index].record_pad;
+        let e = &self.index.tiles[index];
+        let mut t = Tile::parse(self.tile_bytes(index), e.tile_ref)?;
+        t.record_pad = e.record_pad;
         Ok(t)
     }
 
@@ -151,8 +195,8 @@ impl<B: AsRef<[u8]>> NavMeshReader<B> {
 
     /// Parses every tile.
     pub fn read_all(&self) -> Result<NavMeshFile> {
-        let tiles = (0..self.tiles.len()).map(|i| self.tile(i)).collect::<Result<_>>()?;
-        Ok(NavMeshFile { header: self.header, tiles })
+        let tiles = (0..self.tiles().len()).map(|i| self.tile(i)).collect::<Result<_>>()?;
+        Ok(NavMeshFile { header: *self.header(), tiles })
     }
 
     /// The whole file.

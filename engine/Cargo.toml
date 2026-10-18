@@ -19,6 +19,7 @@ cc = "1.2"
 libmimalloc-sys = "0.1"
 memmap2 = "0.9"
 thiserror = "2"
+serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 ctrlc = "3"
 

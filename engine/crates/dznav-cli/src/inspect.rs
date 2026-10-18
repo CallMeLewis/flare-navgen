@@ -7,11 +7,12 @@ use std::time::Instant;
 
 use dznav::compare::{compare_navmeshes, verify_tiles};
 use dznav::format::{ref_salt, ref_tile};
-use dznav::preview::{PreviewOptions, render_preview};
+use dznav::preview::{PreviewOptions, render_area};
+use dznav::summary::{navmesh_info, part_polys, tile_detail};
 use dznav::{Error, NavMeshFile, NavMeshReader};
 use serde_json::{Map, Value, json};
 
-use crate::{CmdResult, emit, json};
+use crate::{CmdResult, emit, emit_serialized, json};
 
 /// A float as C's `%g` (6 significant digits) or C++ stream output prints it.
 pub fn fmt_g(v: f32) -> String {
@@ -41,10 +42,6 @@ pub fn fmt_g(v: f32) -> String {
     }
 }
 
-fn counts_json<K: ToString>(m: &BTreeMap<K, usize>) -> Value {
-    Value::Object(m.iter().map(|(k, v)| (k.to_string(), json!(v))).collect::<Map<_, _>>())
-}
-
 pub fn info(path: &str, list_tiles: bool) -> CmdResult {
     let reader = NavMeshReader::open(path)?;
     let h = reader.header();
@@ -55,85 +52,29 @@ pub fn info(path: &str, list_tiles: bool) -> CmdResult {
         );
         println!("maxTiles {}, maxPolys/tile {}", h.max_tiles, h.max_polys);
     }
-    let (mut polys, mut verts, mut off_mesh, mut parts, mut part_polys, mut obstacles, mut detail) =
-        (0, 0, 0, 0, 0, 0, 0);
-    // Keyed by the float's bits, which order like the floats for positive sizes.
-    let mut cell_sizes: BTreeMap<u32, usize> = BTreeMap::new();
-    let mut areas: BTreeMap<u8, usize> = BTreeMap::new();
-    let mut flags: BTreeMap<u16, usize> = BTreeMap::new();
-    let mut tile_list = Vec::new();
-    for (i, e) in reader.tiles().iter().enumerate() {
-        let t = reader.tile(i)?;
-        polys += t.polys.len();
-        verts += t.verts.len() / 3;
-        off_mesh += t.off_mesh_cons.len();
-        parts += t.parts.len();
-        part_polys += t.part_polys.len();
-        obstacles += t.obstacles.len();
-        detail += t.detail_meshes.len();
-        *cell_sizes.entry((1.0 / t.header.bv_quant_factor).to_bits()).or_default() += 1;
-        for p in &t.polys {
-            *areas.entry(p.area()).or_default() += 1;
-            *flags.entry(p.flags).or_default() += 1;
-        }
-        if list_tiles {
-            // [x, z, bytes, polys, links, obstacles, door parts]
-            tile_list.push(json!([
-                e.x(),
-                e.z(),
-                e.data_size,
-                t.polys.len(),
-                t.off_mesh_cons.len(),
-                t.obstacles.len(),
-                t.parts.len()
-            ]));
-        }
-    }
-    let first = reader.tiles().first().map(|e| e.header);
+    let info = navmesh_info(&reader, path, list_tiles && json())?;
     if json() {
-        let mut j = json!({
-            "event": "info", "path": path, "tiles": reader.tiles().len(),
-            "tilesX": h.tiles_x, "tilesZ": h.tiles_z, "tileWidth": h.tile_width, "tileHeight": h.tile_height,
-            "origin": h.orig, "maxTiles": h.max_tiles, "maxPolys": h.max_polys,
-            "polys": polys, "verts": verts, "links": off_mesh, "doorParts": parts, "doorPolys": part_polys,
-            "obstacles": obstacles,
-        });
-        let o = j.as_object_mut().unwrap();
-        if let Some(t) = first {
-            o.insert(
-                "agent".into(),
-                json!({ "height": t.walkable_height, "radius": t.walkable_radius, "climb": t.walkable_climb }),
-            );
-        }
-        let sizes: Vec<Value> = cell_sizes.iter().map(|(&cs, &n)| json!([f32::from_bits(cs), n])).collect();
-        o.insert("cellSizes".into(), sizes.into());
-        o.insert("areas".into(), counts_json(&areas));
-        o.insert("flags".into(), counts_json(&flags));
-        if list_tiles {
-            o.insert("tileList".into(), tile_list.into());
-        }
-        emit(j);
+        emit_serialized(&info);
         return Ok(ExitCode::SUCCESS);
     }
+    let i = &info;
     println!(
-        "polys {polys}, verts {verts}, off-mesh links {off_mesh}, door parts {parts} ({part_polys} polys), obstacles {obstacles}, detail meshes {detail}"
+        "polys {}, verts {}, off-mesh links {}, door parts {} ({} polys), obstacles {}, detail meshes {}",
+        i.polys, i.verts, i.links, i.door_parts, i.door_polys, i.obstacles, i.detail_meshes
     );
-    if let Some(t) = first {
-        println!(
-            "agent: height {:.2} radius {:.2} climb {:.2}",
-            t.walkable_height, t.walkable_radius, t.walkable_climb
-        );
+    if let Some(a) = i.agent {
+        println!("agent: height {:.2} radius {:.2} climb {:.2}", a.height, a.radius, a.climb);
     }
     let mut line = String::from("cell sizes:");
-    for (&cs, n) in &cell_sizes {
-        write!(line, " {:.3} x{n}", f32::from_bits(cs)).unwrap();
+    for (cs, n) in &i.cell_sizes {
+        write!(line, " {cs:.3} x{n}").unwrap();
     }
     line.push_str("\nareas:");
-    for (a, n) in &areas {
+    for (a, n) in &i.areas {
         write!(line, " {a}:{n}").unwrap();
     }
     line.push_str("\nflags:");
-    for (f, n) in &flags {
+    for (f, n) in &i.flags {
         write!(line, " {f:#x}:{n}").unwrap();
     }
     println!("{line}");
@@ -166,54 +107,8 @@ pub fn tile(path: &str, x: i32, z: i32) -> CmdResult {
     let reader = NavMeshReader::open(path)?;
     let t = reader.tile_at(x, z)?.ok_or_else(|| Error::Format(format!("no tile ({x},{z}) in {path}")))?;
     let h = &t.header;
-    let part_polys = |first: i32| {
-        let mut polys = Vec::new();
-        let mut k = first;
-        while k >= 0 {
-            let pp = t.part_polys[k as usize];
-            polys.push(pp.poly);
-            k = pp.next;
-        }
-        polys
-    };
     if json() {
-        let mut areas: BTreeMap<u8, usize> = BTreeMap::new();
-        let mut flags: BTreeMap<u16, usize> = BTreeMap::new();
-        // Off-mesh link polys are listed under links.
-        for p in t.polys.iter().filter(|p| p.poly_type() == 0) {
-            *areas.entry(p.area()).or_default() += 1;
-            *flags.entry(p.flags).or_default() += 1;
-        }
-        let links: Vec<Value> = t
-            .off_mesh_cons
-            .iter()
-            .map(|c| {
-                let p = &t.polys[c.poly as usize];
-                json!({
-                    "class": c.user_id, "bidirectional": c.flags & 1 != 0,
-                    "from": &c.pos[..3], "to": &c.pos[3..], "centerHeight": c.center_height, "radius": c.rad,
-                    "area": p.area(), "flags": p.flags,
-                })
-            })
-            .collect();
-        let doors: Vec<Value> = t
-            .parts
-            .iter()
-            .map(|part| {
-                json!({
-                    "objectId": format!("0x{:016x}", part.object_id), "part": part.part_index / 2,
-                    "state": part.part_index % 2, "polys": part_polys(part.first_poly).len(),
-                })
-            })
-            .collect();
-        let obstacles: Vec<Value> =
-            t.obstacles.iter().map(|o| json!([o.pos[0], o.pos[1], o.pos[2], o.radius])).collect();
-        emit(json!({
-            "event": "tileDetail", "x": h.x, "z": h.y, "ref": format!("0x{:016x}", t.tile_ref),
-            "bmin": h.bmin, "bmax": h.bmax, "cellSize": 1.0 / h.bv_quant_factor, "bytes": t.data_size(),
-            "polys": h.poly_count, "verts": h.vert_count, "areas": counts_json(&areas), "flags": counts_json(&flags),
-            "links": links, "doors": doors, "obstacles": obstacles,
-        }));
+        emit_serialized(&tile_detail(&t));
         return Ok(ExitCode::SUCCESS);
     }
     println!(
@@ -265,7 +160,7 @@ pub fn tile(path: &str, x: i32, z: i32) -> CmdResult {
     }
     for p in &t.parts {
         write!(out, "  part object 0x{:016x} index {} polys:", p.object_id, p.part_index).unwrap();
-        for poly in part_polys(p.first_poly) {
+        for poly in part_polys(&t, p.first_poly) {
             write!(out, " {poly}").unwrap();
         }
         out.push('\n');
@@ -306,19 +201,7 @@ pub fn export_obj(path: &str, out_path: &str, [x0, z0, x1, z1]: [i32; 4]) -> Cmd
 
 pub fn render(path: &str, out: &str, [min_x, min_z, max_x, max_z]: [f32; 4], pixels_per_meter: f32) -> CmdResult {
     let o = PreviewOptions { min_x, min_z, max_x, max_z, pixels_per_meter, ..Default::default() };
-    let reader = NavMeshReader::open(path)?;
-    // Only the tiles that overlap the rectangle are read; render_preview skips the same ones.
-    let tiles = reader
-        .tiles()
-        .iter()
-        .enumerate()
-        .filter(|(_, e)| {
-            let h = &e.header;
-            !(h.bmax[0] < min_x || h.bmin[0] > max_x || h.bmax[2] < min_z || h.bmin[2] > max_z)
-        })
-        .map(|(i, _)| reader.tile(i))
-        .collect::<Result<Vec<_>, _>>()?;
-    let image = render_preview(&tiles, &o);
+    let image = render_area(&NavMeshReader::open(path)?, &o)?;
     image.write_png(out)?;
     if json() {
         emit(json!({ "event": "render", "output": out, "width": image.width(), "height": image.height() }));

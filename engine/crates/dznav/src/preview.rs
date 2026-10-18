@@ -4,6 +4,7 @@ use std::path::Path;
 
 use crate::error::{Result, io_err};
 use crate::format::NavMeshFile;
+use crate::reader::NavMeshReader;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Rgba {
@@ -298,4 +299,19 @@ pub fn render_preview<'a>(tiles: impl IntoIterator<Item = &'a crate::Tile>, o: &
 /// Renders a whole in-memory navmesh.
 pub fn render_file(file: &NavMeshFile, o: &PreviewOptions) -> Raster {
     render_preview(&file.tiles, o)
+}
+
+/// Renders a navmesh file, reading only the tiles that overlap the options' rectangle.
+pub fn render_area<B: AsRef<[u8]>>(reader: &NavMeshReader<B>, o: &PreviewOptions) -> Result<Raster> {
+    let tiles = reader
+        .tiles()
+        .iter()
+        .enumerate()
+        .filter(|(_, e)| {
+            let h = &e.header;
+            !(h.bmax[0] < o.min_x || h.bmin[0] > o.max_x || h.bmax[2] < o.min_z || h.bmin[2] > o.max_z)
+        })
+        .map(|(i, _)| reader.tile(i))
+        .collect::<Result<Vec<_>>>()?;
+    Ok(render_preview(&tiles, o))
 }

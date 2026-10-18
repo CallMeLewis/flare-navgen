@@ -29,6 +29,11 @@ pub fn emit(event: serde_json::Value) {
     println!("{event}");
 }
 
+/// Writes a serialisable event (with its own `event` field) as a line on stdout.
+pub fn emit_serialized<T: serde::Serialize>(event: &T) {
+    println!("{}", serde_json::to_string(event).expect("events serialise"));
+}
+
 /// The first Ctrl+C asks the running command to stop; a second one quits at once.
 pub fn stop_on_ctrl_c() {
     let _ = ctrlc::set_handler(|| {
