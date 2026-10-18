@@ -1,6 +1,6 @@
 [package]
 name = "flare-navgen"
-version = "0.2.0"
+version = "0.3.0-beta.1"
 description = "Flare Navgen desktop app"
 repository = "https://github.com/CallMeLewis/flare-navgen"
 edition = "2024"
