@@ -1,6 +1,7 @@
-// The navmesh open in Inspect. Kept here rather than in the page, so leaving Inspect and coming back doesn't read the
-// file again, which takes seconds for a large map.
-import { EngineError, runEngine, type EventOf } from '@/lib/engine'
+// The navmesh open in Inspect. Kept here rather than in the page, so leaving Inspect and coming back doesn't ask for its
+// summary again.
+import { EngineError, type EventOf } from '@/lib/engine'
+import { navmeshInfo } from '@/lib/inspector'
 
 import { Store } from './store'
 
@@ -21,7 +22,7 @@ export async function openNavmesh(path: string) {
   const request = ++latest
   inspect.set((s) => ({ ...s, path, loading: true, error: null }))
   try {
-    const info = await runEngine(['info', path, '--tiles'], 'info')
+    const info = await navmeshInfo(path)
     if (request === latest) inspect.set({ path, info, loading: false, error: null })
   } catch (e) {
     if (request === latest) inspect.set({ path, info: null, loading: false, error: e instanceof EngineError ? e.message : String(e) })

@@ -1,14 +1,7 @@
 mod engine;
+mod inspect;
 
 use tauri::{AppHandle, Manager};
-
-/// The app's cache folder (created if needed), where tile previews are rendered.
-#[tauri::command]
-fn cache_dir(app: AppHandle) -> Result<String, String> {
-    let dir = app.path().app_cache_dir().map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Ok(dir.to_string_lossy().into_owned())
-}
 
 /// Whether a file is there, so the window can ask before a run replaces it.
 #[tauri::command]
@@ -40,6 +33,7 @@ pub fn run() {
                 .build(),
         )
         .manage(engine::Jobs::default())
+        .manage(inspect::Inspector::default())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(tauri_plugin_log::Builder::default().level(log::LevelFilter::Info).build())?;
@@ -47,12 +41,14 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            cache_dir,
             file_exists,
             open_project_page,
             engine::engine_start,
             engine::engine_stop,
-            engine::engine_kill
+            engine::engine_kill,
+            inspect::inspect_info,
+            inspect::inspect_tile,
+            inspect::inspect_render
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

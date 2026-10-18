@@ -2,7 +2,7 @@
 
 Tauri v2 + React + TypeScript + Tailwind CSS v4 + shadcn/ui. It drives the `dznav` engine (in
 [../engine/](../engine/)) as a bundled sidecar, through the engine's JSON output
-([../docs/cli-json.md](../docs/cli-json.md)). Design rules:
+([../docs/cli-json.md](../docs/cli-json.md)), and reads navmeshes for Inspect through the engine's library. Design rules:
 [../docs/design.md](../docs/design.md).
 
 ## Develop
@@ -40,3 +40,5 @@ engine" in the status bar), for working on the interface without the desktop she
   settings dialog and update button (`@flare/ui`), and the release script (`@flare/release`, used by
   `scripts/release.ts`).
 - `src-tauri/src/engine.rs`: starts `dznav --json`, streams its output, stops (`stop` on stdin) or kills it.
+- `src-tauri/src/inspect.rs` and `src/lib/inspector.ts`: Inspect reads navmeshes in process, through the engine's
+  library.

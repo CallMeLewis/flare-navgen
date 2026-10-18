@@ -1,5 +1,6 @@
 // The generation job: runs `dznav generate`, and keeps per-tile state for the map.
-import { runEngine, startEngine, type EngineEvent, type EngineJob, type EventOf, type TileRange } from '@/lib/engine'
+import { startEngine, type EngineEvent, type EngineJob, type EventOf, type TileRange } from '@/lib/engine'
+import { navmeshInfo } from '@/lib/inspector'
 import { fileName } from '@/lib/format'
 
 import { Store } from './store'
@@ -145,7 +146,7 @@ class GenerationJob {
     if (options.base && options.skipExisting) {
       this.log('info', `Reading ${fileName(options.base)} for the tiles it already has.`)
       try {
-        const info = await runEngine(['info', options.base, '--tiles'], 'info')
+        const info = await navmeshInfo(options.base)
         this.existing = { tilesX: info.tilesX, tiles: (info.tileList ?? []).map(([x, z]) => [x, z]) }
       } catch {
         // The run reports a navmesh it can't read; the map just won't show the tiles it keeps.

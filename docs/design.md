@@ -118,10 +118,12 @@ Never colour alone: every state also has an icon or label, and maps have a legen
 
 ## Engine integration
 
-The app runs `dznav.exe` as a Tauri sidecar with `--json`: one JSON event per line on stdout
-(contract in [cli-json.md](cli-json.md)); Stop writes `stop` to its stdin so the
-engine saves before exiting. Navmeshes are 400 MB to 1.3 GB, so the inspector never loads a
-whole file into the webview. Instead it shows a per-tile metric map (`info --tiles`), and for a
-picked tile its details (`tile`) and an engine-rendered PNG (`render`, loaded through Tauri's
-asset protocol). Each query currently re-reads the file (about 1.6 s for a large map); a long-lived
-engine `serve` mode that keeps it loaded is the planned next step. The CLI keeps working on its own.
+The app runs `dznav.exe` as a Tauri sidecar with `--json` for generation and the Tools page: one
+JSON event per line on stdout (contract in [cli-json.md](cli-json.md)); Stop writes `stop` to its
+stdin so the engine saves before exiting. The CLI keeps working on its own.
+
+Inspect reads navmeshes in the app's own process, through the engine's library. Navmeshes are
+400 MB to 1.3 GB, so the inspector never loads a whole file into the webview. Instead it shows a
+per-tile metric map (the `info --tiles` summary), and for a picked tile its details and an
+engine-rendered PNG, both in milliseconds. No file stays open between queries, so a run can save over
+the navmesh being inspected; the tile index and the summary are kept until the file changes.

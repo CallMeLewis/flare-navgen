@@ -1,5 +1,3 @@
-import { convertFileSrc, invoke } from '@tauri-apps/api/core'
-import { join } from '@tauri-apps/api/path'
 import { FolderOpen, LoaderCircle, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -11,7 +9,8 @@ import { Input } from '@flare/ui/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@flare/ui/ui/toggle-group'
 import { cssVarRgb, viridisAt, viridisGradient } from '@/lib/colors'
-import { EngineError, hasRealEngine, runEngine, type EventOf } from '@/lib/engine'
+import { EngineError, hasRealEngine, type EventOf } from '@/lib/engine'
+import { renderArea, tileDetail } from '@/lib/inspector'
 import { fileName, formatBytes, formatInt, formatNumber, formatPercent } from '@/lib/format'
 import { areaInfo, navmeshFilters } from '@/lib/navmesh'
 import { inspect, openNavmesh } from '@/state/inspect'
@@ -247,17 +246,20 @@ function TileDetail({ path, x, z, onClose }: { path: string; x: number; z: numbe
   // Remounted per tile (keyed), so state starts fresh.
   useEffect(() => {
     let cancelled = false
+    let url: string | null = null
     void (async () => {
       try {
-        const d = await runEngine(['tile', path, String(x), String(z)], 'tileDetail')
+        const d = await tileDetail(path, x, z)
         if (cancelled) return
         setDetail(d)
-        if (!hasRealEngine) return setState('ready')
         setState('rendering')
-        const out = await join(await invoke<string>('cache_dir'), `tile-${x}-${z}.png`)
-        await runEngine(['render', path, out, String(d.bmin[0]), String(d.bmin[2]), String(d.bmax[0]), String(d.bmax[2]), '8'], 'render')
-        if (cancelled) return
-        setImage(`${convertFileSrc(out)}?t=${Date.now()}`)
+        const rendered = await renderArea(path, [d.bmin[0], d.bmin[2]], [d.bmax[0], d.bmax[2]], 8)
+        if (cancelled) {
+          if (rendered) URL.revokeObjectURL(rendered)
+          return
+        }
+        url = rendered
+        setImage(url)
         setState('ready')
       } catch (e) {
         if (cancelled) return
@@ -268,6 +270,7 @@ function TileDetail({ path, x, z, onClose }: { path: string; x: number; z: numbe
     })()
     return () => {
       cancelled = true
+      if (url) URL.revokeObjectURL(url)
     }
   }, [path, x, z])
 

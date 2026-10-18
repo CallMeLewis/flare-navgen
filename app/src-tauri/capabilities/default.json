@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Main window: core APIs, its own title bar (moving, minimising, maximising and closing), its zoom for the interface size, file dialogs, the app cache directory and its own updates.",
+  "description": "Main window: core APIs, its own title bar (moving, minimising, maximising and closing), its zoom for the interface size, file dialogs and its own updates.",
   "windows": ["main"],
   "permissions": [
     "core:default",
