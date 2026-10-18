@@ -1,0 +1,49 @@
+{
+  "name": "flare-navgen",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": "^24.13.0 || >=26.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && tsc -p scripts && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "engine": "node scripts/copy-engine.mjs",
+    "changelog": "node scripts/check-changelog.ts",
+    "bump": "node scripts/bump-version.ts",
+    "dist": "pnpm changelog && tauri build --bundles nsis",
+    "release": "node scripts/release.ts release",
+    "release:feed": "node scripts/release.ts feed",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@flare/ui": "link:../../flare-common/packages/ui",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-dialog": "^2.8.3",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.4.0",
+    "lucide-react": "^1.57.0",
+    "radix-ui": "^1.8.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "shadcn": "^4.21.5",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@flare/release": "link:../../flare-common/packages/release",
+    "@tauri-apps/cli": "^2.12.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "wrangler": "4.146.0"
+  }
+}

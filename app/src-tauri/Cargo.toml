@@ -1,0 +1,26 @@
+[package]
+name = "flare-navgen"
+version = "0.2.0"
+description = "Flare Navgen desktop app"
+repository = "https://github.com/CallMeLewis/flare-navgen"
+edition = "2024"
+rust-version = "1.90"
+
+[lib]
+name = "flare_navgen_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.3", features = [] }
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4"
+tauri = { version = "2.12.4", features = ["protocol-asset"] }
+tauri-plugin-log = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-flare-updater = { path = "../../../flare-common/crates/tauri-plugin-flare-updater" }
+tokio = { version = "1", features = ["time"] }

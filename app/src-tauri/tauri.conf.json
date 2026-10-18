@@ -1,0 +1,64 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Flare Navgen",
+  "version": "../package.json",
+  "identifier": "com.darkzone.flarenavgen",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "pnpm engine && pnpm dev",
+    "beforeBuildCommand": "pnpm engine && pnpm build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Flare Navgen",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1280,
+        "minHeight": 800,
+        "resizable": true,
+        "theme": "Dark",
+        "decorations": false,
+        "shadow": true,
+        "backgroundColor": "#0B1120"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src ipc: http://ipc.localhost",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPCACHE/**"]
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM5NURDNjEwQkY1QUU2RTMKUldUajVscS9FTVpkeVg2QmIrVnFCM0FQMXlrT3FYOUFIdTdOMFJ2VmlHa20zOUZ5MWRVK0lDWEkK",
+      "endpoints": ["https://updates.darkzone.dev/flare-navgen/latest.json"],
+      "requireSignedVersion": true,
+      "windows": {
+        "installMode": "quiet"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "publisher": "CallMeLewis",
+    "copyright": "Copyright © 2026 CallMeLewis",
+    "targets": ["nsis"],
+    "externalBin": ["binaries/dznav"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico"
+      }
+    }
+  }
+}

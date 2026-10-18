@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect x="48" y="48" width="928" height="928" rx="208" fill="#0B1120"/>
+  <rect x="48" y="48" width="928" height="928" rx="208" fill="none" stroke="#38BDF8" stroke-opacity="0.35" stroke-width="12"/>
+  <!-- Flare Launcher's signal flare, in sky blue, with the smoke trail drawn as a strip of navmesh triangles. -->
+  <g fill="none" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" opacity="0.7">
+    <polygon points="327,817 350,707 398,632 477,585 463,519 344,562 254,657 197,795" fill="#38BDF8" fill-opacity="0.3" stroke-width="34"/>
+    <g stroke-width="26"><line x1="350" y1="707" x2="254" y2="657"/><line x1="398" y1="632" x2="344" y2="562"/><line x1="327" y1="817" x2="254" y2="657"/><line x1="350" y1="707" x2="344" y2="562"/><line x1="398" y1="632" x2="463" y2="519"/></g>
+  </g>
+  <g fill="none" stroke="#38BDF8" stroke-linecap="round" stroke-width="60">
+    <line x1="590.0" y1="265.0" x2="590.0" y2="168.0"/><line x1="706.7" y1="313.3" x2="775.3" y2="244.7"/><line x1="755.0" y1="430.0" x2="852.0" y2="430.0"/><line x1="706.7" y1="546.7" x2="775.3" y2="615.3"/><line x1="590.0" y1="595.0" x2="590.0" y2="692.0"/><line x1="425.0" y1="430.0" x2="328.0" y2="430.0"/><line x1="473.3" y1="313.3" x2="404.7" y2="244.7"/>
+  </g>
+  <circle cx="590" cy="430" r="100" fill="#38BDF8"/>
+</svg>

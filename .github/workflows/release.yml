@@ -1,0 +1,127 @@
+# Checks the tag and the repo, builds a release, signs it and publishes it as a GitHub release, then updates the update
+# feed on R2 to point at it.
+# Runs when `pnpm release` (in app/) pushes a v<version> tag. To build a tag again, run it from the Actions tab on main
+# and enter the tag: the workflow and the release script then come from main, with any fixes, and the app from the tag.
+# For a version the update feed already offers, it leaves the published installer as it is.
+#
+# Needs these secrets in the release environment, which only main and v* tags can use: TAURI_SIGNING_PRIVATE_KEY (the
+# contents of the update signing key), CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID for writing the feed to R2, and
+# CERTUM_USERNAME and CERTUM_TOTP_SECRET for signing the build with the code signing certificate (see build.yml). And,
+# as a repository secret, FLARE_COMMON_DEPLOY_KEY for reading flare-common (see .github/actions/flare-common).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to build, such as v1.2.0
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+# One run per tag at a time. Tags don't share a group: a group keeps only its newest waiting run, so a third tag pushed
+# while one builds would silently drop the second.
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Check the version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      commit: ${{ steps.commit.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+          persist-credentials: false
+      # Build and publish check out this commit rather than the tag, so a tag moved during the run can't change what
+      # ships after it was checked.
+      - name: Find the tag's commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Tag matches app/package.json
+        run: |
+          version=$(node -p 'require("./app/package.json").version')
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::Run this on the tag v$version (app/package.json's version), not $TAG."
+            exit 1
+          fi
+      - name: Tag is on main
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$TAG isn't on main. Release from a commit that has been merged into main."
+            exit 1
+          fi
+
+  # Checks the repo, then builds (build.yml), the same as CI, with the installer signed. The update signature is added
+  # after, in publish, since signing the installer changes it.
+  build:
+    name: Build
+    needs: version
+    uses: ./.github/workflows/build.yml
+    with:
+      ref: ${{ needs.version.outputs.commit }}
+      sign: true
+    secrets:
+      CERTUM_USERNAME: ${{ secrets.CERTUM_USERNAME }}
+      CERTUM_TOTP_SECRET: ${{ secrets.CERTUM_TOTP_SECRET }}
+      FLARE_COMMON_DEPLOY_KEY: ${{ secrets.FLARE_COMMON_DEPLOY_KEY }}
+
+  publish:
+    name: Publish
+    needs: [version, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.version.outputs.commit }}
+          persist-credentials: false
+      # A tag built again publishes with the release script from main, so a fix to it made since the tag is used.
+      - name: Use the release scripts from main
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git fetch --depth 1 origin "$GITHUB_SHA"
+          git checkout FETCH_HEAD -- scripts
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          package_json_file: app/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - uses: ./.github/actions/flare-common
+        with:
+          deploy-key: ${{ secrets.FLARE_COMMON_DEPLOY_KEY }}
+      - run: pnpm install --frozen-lockfile
+      # Back where the build would be on a desktop, which is where the release script looks for it.
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows
+          path: app/src-tauri/target/release/bundle/nsis
+      # The secrets are only given to this step, not to installing the dependencies, and the script passes each tool
+      # only the ones it needs.
+      - name: Sign and publish
+        run: node scripts/release.ts publish
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
