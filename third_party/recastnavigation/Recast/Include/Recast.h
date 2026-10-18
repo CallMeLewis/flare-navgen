@@ -324,6 +324,7 @@ struct rcHeightfield
 	rcSpan** spans;		///< Heightfield of spans (width*height).
 	rcSpanPool* pools;	///< Linked list of span pools.
 	rcSpan* freelist;	///< The next free span.
+	rcSpan** hints;		///< DAYZ: per column, the span below the last one added, where adding can resume (width*height).
 
 private:
 	// Explicitly-disabled copy constructor and copy assignment operator.

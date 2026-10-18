@@ -103,6 +103,7 @@ rcHeightfield::rcHeightfield()
 , spans()
 , pools()
 , freelist()
+, hints()
 {
 }
 
@@ -110,6 +111,7 @@ rcHeightfield::~rcHeightfield()
 {
 	// Delete span array.
 	rcFree(spans);
+	rcFree(hints); // DAYZ
 	// Delete span pools.
 	while (pools)
 	{
@@ -325,6 +327,13 @@ bool rcCreateHeightfield(rcContext* context, rcHeightfield& heightfield, int siz
 		return false;
 	}
 	memset(heightfield.spans, 0, sizeof(rcSpan*) * heightfield.width * heightfield.height);
+	// DAYZ
+	heightfield.hints = (rcSpan**)rcAlloc(sizeof(rcSpan*) * heightfield.width * heightfield.height, RC_ALLOC_PERM);
+	if (!heightfield.hints)
+	{
+		return false;
+	}
+	memset(heightfield.hints, 0, sizeof(rcSpan*) * heightfield.width * heightfield.height);
 	return true;
 }
 

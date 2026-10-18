@@ -16,6 +16,7 @@ dznav = { path = "crates/dznav" }
 crossbeam-channel = "0.5"
 bytemuck = { version = "1.25", features = ["derive", "min_const_generics"] }
 cc = "1.2"
+libmimalloc-sys = "0.1"
 memmap2 = "0.9"
 thiserror = "2"
 serde_json = { version = "1", features = ["preserve_order"] }

@@ -8,7 +8,8 @@
 #include "RecastAssert.h"
 
 // A 21x21 majority vote over the lowest span's area
-// in each column, ignoring area 0. Run on the heightfield after terrain rasterisation.
+// in each column, ignoring area 0; ties go to the lowest area. Run on the heightfield after terrain rasterisation.
+// The window slides along each row, so a step only removes one column of 21 cells and adds another.
 bool dzModeFilterWalkableAreaFlat(rcContext* ctx, rcHeightfield& hf, const int borderSize)
 {
 	const int w = hf.width;
@@ -27,26 +28,44 @@ bool dzModeFilterWalkableAreaFlat(rcContext* ctx, rcHeightfield& hf, const int b
 		src[i] = hf.spans[i] ? (unsigned char)hf.spans[i]->area : 0;
 	memcpy(dst, src, n);
 
-	unsigned short hist[256];
+	const int r = 10;
+	const int half = (2 * r + 1) * (2 * r + 1) / 2;
+	unsigned short hist[64]; // span areas are 6 bits
 	for (int z = borderSize; z < h - borderSize; ++z)
 	{
+		memset(hist, 0, sizeof(hist));
+		for (int dz = -r; dz <= r; ++dz)
+		{
+			const unsigned char* row = &src[(z + dz) * w + borderSize];
+			for (int dx = -r; dx <= r; ++dx)
+				hist[row[dx]]++;
+		}
+		int mode = 0;
 		for (int x = borderSize; x < w - borderSize; ++x)
 		{
-			memset(hist, 0, sizeof(hist));
-			for (int dz = -10; dz <= 10; ++dz)
+			if (x > borderSize)
 			{
-				const unsigned char* row = &src[(z + dz) * w + x];
-				for (int dx = -10; dx <= 10; ++dx)
-					hist[row[dx]]++;
+				for (int dz = -r; dz <= r; ++dz)
+				{
+					const unsigned char* row = &src[(z + dz) * w];
+					hist[row[x - r - 1]]--;
+					hist[row[x + r]]++;
+				}
 			}
-			hist[0] = 0;
-			unsigned short best = 0;
-			for (int a = 0; a < 256; ++a)
-				if (hist[a] > best)
-					best = hist[a];
-			int mode = 0;
-			while (hist[mode] != best)
-				++mode;
+			// An area holding more than half the window can't be matched, so it stays the mode.
+			if (mode == 0 || hist[mode] <= half)
+			{
+				unsigned short best = 0;
+				mode = 0;
+				for (int a = 1; a < 64; ++a)
+				{
+					if (hist[a] > best)
+					{
+						best = hist[a];
+						mode = a;
+					}
+				}
+			}
 			dst[z * w + x] = (unsigned char)mode;
 		}
 	}

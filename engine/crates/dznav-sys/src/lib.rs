@@ -4,6 +4,9 @@
 
 use std::ffi::c_int;
 
+// The core allocates through mimalloc (cpp/core.cpp); this links it in.
+use libmimalloc_sys as _;
+
 #[repr(C)]
 #[derive(Debug)]
 pub struct DznBytes {
