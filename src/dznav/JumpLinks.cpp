@@ -288,9 +288,12 @@ void sampleEdges(Gen& gen, const std::vector<TrajSample>& traj, float total, con
 
   std::vector<int> state;
   std::vector<float> value;
-  for (const Seg& edge : gen.edges) {
+  // Each centreline is sampled from both sides: even passes jump along +n, odd passes along -n.
+  for (size_t pass = 0; pass < gen.edges.size() * 2; ++pass) {
+    const Seg& edge = gen.edges[pass >> 1];
+    const float side = (pass & 1) ? -1.0f : 1.0f;
     const V3 A = edge.p0, B = edge.p1;
-    const V3 dn = normalizeOr(B - A, V3{(B - A).x, 1.0f, (B - A).z});
+    const V3 dn = normalizeOr(B - A, V3{(B - A).x, 1.0f, (B - A).z}) * side;
     const V3 n = normalizeOr(V3{dn.z, 0.0f, -dn.x}, V3{dn.z, 1.0f, -dn.x});
     const V3 S0 = n * (-h) + A;
     const V3 dir = (n * (-h) + B) - S0;
@@ -399,48 +402,13 @@ void sampleEdges(Gen& gen, const std::vector<TrajSample>& traj, float total, con
   }
 }
 
-float clamp01(float x) { return (0.0f <= x) ? (x <= 1.0f ? x : 1.0f) : 0.0f; }
-
-// Squared distance between segments p1-q1 and p2-q2 (closest points
-// as in Ericson, Real-Time Collision Detection 5.1.9, with DayZ's epsilon and operation order).
-float segSegDist2(V3 p1, V3 q1, V3 p2, V3 q2) {
-  const V3 d2 = q2 - p2, d1 = q1 - p1, r = p1 - p2;
-  const float a = d1.y * d1.y + d1.x * d1.x + d1.z * d1.z;
-  const float e = d2.y * d2.y + d2.x * d2.x + d2.z * d2.z;
-  const float f = r.y * d2.y + r.x * d2.x + r.z * d2.z;
-  float s, t;
-  if (a <= 1e-6f) {
-    s = 0.0f;
-    t = 1e-6f < e ? clamp01(f / e) : 0.0f;
-  } else {
-    const float c = r.y * d1.y + r.x * d1.x + r.z * d1.z;
-    if (e <= 1e-6f) {
-      t = 0.0f;
-      s = clamp01(-(c / a));
-    } else {
-      const float b = d2.y * d1.y + d2.x * d1.x + d2.z * d1.z;
-      const float denom = e * a - b * b;
-      s = denom == 0.0f ? 0.0f : clamp01((b * f - c * e) / denom);
-      t = (s * b + f) / e;
-      if (0.0f <= t) {
-        if (t > 1.0f) {
-          t = 1.0f;
-          s = clamp01((b - c) / a);
-        }
-      } else {
-        t = 0.0f;
-        s = clamp01(-(c / a));
-      }
-    }
-  }
-  const float dx = ((q2.x - p2.x) * t + p2.x) - ((q1.x - p1.x) * s + p1.x);
-  const float dz = ((q2.z - p2.z) * t + p2.z) - ((q1.z - p1.z) * s + p1.z);
-  const float dy = ((q2.y - p2.y) * t + p2.y) - ((q1.y - p1.y) * s + p1.y);
-  return dy * dy + dx * dx + dz * dz;
+float distSq(V3 a, V3 b) {
+  const V3 d = a - b;
+  return d.y * d.y + d.x * d.x + d.z * d.z;
 }
 
-// The two sides of an obstacle produce reversed copies of the same span; keep the
-// longer one as a bidirectional link.
+// A span and its reverse (start and end swapped, end to end within 5 cells) become one
+// bidirectional link: the longer span is kept. Each span merges at most once.
 void mergeReverseDuplicates(Gen& gen) {
   const float thr = (gen.chf->cs * 5.0f) * (gen.chf->cs * 5.0f);
   for (size_t i = 0; i < gen.spans.size(); ++i) {
@@ -449,20 +417,18 @@ void mergeReverseDuplicates(Gen& gen) {
     for (size_t j = i + 1; j < gen.spans.size(); ++j) {
       Span& b = gen.spans[j];
       if (!b.valid) continue;
-      const float dA = segSegDist2(a.e0, a.e1, b.s0, b.s1);
-      const float dB = segSegDist2(a.s0, a.s1, b.e0, b.e1);
-      if (dB < thr && dA < thr) {
-        const V3 da = a.s1 - a.s0, db = b.s1 - b.s0;
-        if (da.y * da.y + da.x * da.x + da.z * da.z <= db.y * db.y + db.x * db.x + db.z * db.z) {
-          a.valid = 0;
-          b.valid = 2;
-          break;
-        }
-        // The kept span goes on comparing with later spans.
+      if (!(distSq(b.e0, a.s0) < thr && distSq(b.e1, a.s1) < thr && distSq(b.s0, a.e0) < thr &&
+            distSq(b.s1, a.e1) < thr))
+        continue;
+      if (distSq(a.s1, a.s0) <= distSq(b.s1, b.s0)) {
+        a.valid = 0;
+        b.valid = 2;
+      } else {
         a.valid = 2;
         b.valid = 0;
         a.centerH = b.centerH;
       }
+      break;
     }
   }
 }

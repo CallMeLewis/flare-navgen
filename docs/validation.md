@@ -52,6 +52,9 @@ level pinned to each session's tide):
 
 The remaining 34 tiles change from capture to capture, and on identical input they match too.
 
+**DayZ 1.30.** A 49-tile range built by the 1.30 tools from the same DayZDiag session (sea level
+pinned to 0.60) is byte-identical, object order included, with every jump link the same.
+
 ## Bugs found this way
 
 1. **Jump-link sample points** (about 1 % of tiles). The sampler computes each sample's far end

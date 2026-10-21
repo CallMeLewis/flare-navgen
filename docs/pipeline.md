@@ -82,13 +82,16 @@ For each link class in config order:
    parts paint (step 3).
    For every edge, the facing edge across an obstacle (within 1.8 m on shipped configs) is found
    and the midline between them becomes a centreline.
-2. A jump profile is swept along each centreline: step height at the ends, jump height in the
+2. A jump profile is swept along each centreline, once jumping each way across it (DayZ 1.30;
+   1.29 and earlier only swept one way): step height at the ends, jump height in the
    middle, plus the agent height, with take-off/landing within the class's drop-down limits, no
    water at either end, and the obstacle height at the midline ≥ `minCenterHeight` (≤ when
    negative). Runs of valid samples longer than the agent diameter become spans. Sample points
    sit on cell boundaries often enough that float association matters: the far end is
    `dir·t + (n·h + A)`, with `n·h + A` computed once per edge.
-3. Spans found from both sides of an obstacle merge into one bidirectional span.
+3. A span and its reverse (ends swapped, every end within 5 cells of its counterpart) merge into
+   one bidirectional span, the longer of the two. Each span merges at most once; the rest stay
+   one-way.
 4. Links are placed every 2 m along each span, centred.
 
 ## Island filter
