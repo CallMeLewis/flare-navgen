@@ -99,7 +99,7 @@ dependencies = [
 
 [[package]]
 name = "dznav"
-version = "0.3.0-beta.1"
+version = "0.3.0"
 dependencies = [
  "bytemuck",
  "crossbeam-channel",
@@ -111,7 +111,7 @@ dependencies = [
 
 [[package]]
 name = "dznav-cli"
-version = "0.3.0-beta.1"
+version = "0.3.0"
 dependencies = [
  "ctrlc",
  "dznav",
@@ -121,7 +121,7 @@ dependencies = [
 
 [[package]]
 name = "dznav-sys"
-version = "0.3.0-beta.1"
+version = "0.3.0"
 dependencies = [
  "cc",
  "libmimalloc-sys",

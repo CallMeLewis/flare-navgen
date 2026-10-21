@@ -916,7 +916,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "dznav"
-version = "0.3.0-beta.1"
+version = "0.3.0"
 dependencies = [
  "bytemuck",
  "crossbeam-channel",
@@ -928,7 +928,7 @@ dependencies = [
 
 [[package]]
 name = "dznav-sys"
-version = "0.3.0-beta.1"
+version = "0.3.0"
 dependencies = [
  "cc",
  "libmimalloc-sys",
@@ -1104,7 +1104,7 @@ checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
 
 [[package]]
 name = "flare-navgen"
-version = "0.3.0-beta.1"
+version = "0.3.0"
 dependencies = [
  "dznav",
  "log",

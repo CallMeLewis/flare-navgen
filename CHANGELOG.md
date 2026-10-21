@@ -3,6 +3,13 @@
 What changed in each version of Flare Navgen, newest first. See [docs/release-notes.md](docs/release-notes.md) for how to
 write them.
 
+## 0.3.0 - 2026-10-21
+
+- Navmeshes are now saved in DayZ 1.30's format, which the game needs to load them; navmeshes from earlier versions still open, and are saved in the new format.
+- Jump links over fences and walls are now built from both sides, as in DayZ 1.30's own navmeshes, so most of them now work in both directions. Build your navmesh again to get them.
+- Building a navmesh is about one and a half times as fast.
+- Inspect shows a tile's details and preview as soon as you click it, instead of after a few seconds.
+
 ## 0.3.0-beta.1 - 2026-10-18
 
 - This beta has a rewritten engine for building navmeshes; it builds the same navmeshes as 0.2.0, so please report anything that behaves differently.
