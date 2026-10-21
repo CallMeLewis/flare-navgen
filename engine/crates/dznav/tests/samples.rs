@@ -12,7 +12,10 @@ fn round_trip_is_byte_identical() {
     for path in common::sample_navmeshes() {
         let bytes = std::fs::read(&path).unwrap();
         let file = NavMeshFile::parse(&bytes).unwrap();
-        assert!(file.serialize().unwrap() == bytes, "{} changed in a round trip", path.display());
+        // Older files are saved with the current set version.
+        let mut saved = file.serialize().unwrap();
+        saved[4..8].copy_from_slice(&bytes[4..8]);
+        assert!(saved == bytes, "{} changed in a round trip", path.display());
 
         let reader = NavMeshReader::open(&path).unwrap();
         assert_eq!(reader.tiles().len(), file.tiles.len());

@@ -15,7 +15,8 @@
 namespace dznav {
 
 constexpr uint32_t kSetMagic = 'M' << 24 | 'S' << 16 | 'E' << 8 | 'T';  // bytes "TESM"
-constexpr int32_t kSetVersion = 7;
+constexpr int32_t kSetVersion = 9;     // DayZ 1.30+; the game loads no other version
+constexpr int32_t kSetVersionOld = 7;  // DayZ 1.29 and earlier: same layout, still read (and saved as 9)
 constexpr uint32_t kTileMagic = 'D' << 24 | 'N' << 16 | 'A' << 8 | 'V';  // bytes "VAND"
 constexpr int32_t kTileVersion = 12;
 constexpr int kVertsPerPoly = 6;

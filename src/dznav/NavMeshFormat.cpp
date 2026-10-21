@@ -160,7 +160,8 @@ NavMeshFile parseNavMesh(std::span<const uint8_t> bytes) {
   f.header = r.read<SetHeader>();
   const SetHeader& h = f.header;
   if (h.magic != kSetMagic) throw FormatError{"Invalid header format (bad magic)"};
-  if (h.version != kSetVersion) throw FormatError{"Invalid version " + std::to_string(h.version)};
+  if (h.version != kSetVersion && h.version != kSetVersionOld)
+    throw FormatError{"Invalid version " + std::to_string(h.version)};
   checkCount(h.numTiles, "numTiles");
 
   if (h.maxTiles < h.numTiles) throw FormatError{"numTiles exceeds maxTiles"};

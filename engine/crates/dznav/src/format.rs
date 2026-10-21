@@ -16,7 +16,10 @@ use crate::error::{Result, format_err, io_err};
 
 /// Bytes "TESM".
 pub const SET_MAGIC: u32 = u32::from_be_bytes(*b"MSET");
-pub const SET_VERSION: i32 = 7;
+/// DayZ 1.30+; the game loads no other version.
+pub const SET_VERSION: i32 = 9;
+/// DayZ 1.29 and earlier: the same layout, so still read (and saved as [`SET_VERSION`]).
+pub const SET_VERSION_OLD: i32 = 7;
 /// Bytes "VAND".
 pub const TILE_MAGIC: u32 = u32::from_be_bytes(*b"DNAV");
 pub const TILE_VERSION: i32 = 12;

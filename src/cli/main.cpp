@@ -195,6 +195,11 @@ int cmdRoundtrip(const std::string& path) {
   auto t2 = std::chrono::steady_clock::now();
   auto ms = [](auto a, auto b) { return std::chrono::duration<double, std::milli>(b - a).count(); };
   std::printf("parsed %zu tiles in %.0f ms, serialized in %.0f ms\n", f.tiles.size(), ms(t0, t1), ms(t1, t2));
+  // Older files are saved with the current set version; compare everything else.
+  if (f.header.version != kSetVersion) {
+    std::printf("set version %d saved as %d\n", f.header.version, kSetVersion);
+    std::memcpy(rewritten.data() + 4, original.data() + 4, 4);
+  }
   if (original.size() != rewritten.size()) {
     std::printf("FAIL: size %zu vs %zu\n", original.size(), rewritten.size());
     return 1;

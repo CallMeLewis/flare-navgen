@@ -6,7 +6,7 @@ use std::process::ExitCode;
 use std::time::Instant;
 
 use dznav::compare::{compare_navmeshes, verify_tiles};
-use dznav::format::{ref_salt, ref_tile};
+use dznav::format::{SET_VERSION, ref_salt, ref_tile};
 use dznav::preview::{PreviewOptions, render_area};
 use dznav::summary::{navmesh_info, part_polys, tile_detail};
 use dznav::{Error, NavMeshFile, NavMeshReader};
@@ -87,10 +87,15 @@ pub fn roundtrip(path: &str) -> CmdResult {
         std::fs::read(path).map_err(|source| Error::Io { context: format!("cannot open {path}"), source })?;
     let file = NavMeshFile::parse(&original)?;
     let t1 = Instant::now();
-    let rewritten = file.serialize()?;
+    let mut rewritten = file.serialize()?;
     let t2 = Instant::now();
     let ms = |a: Instant, b: Instant| (b - a).as_secs_f64() * 1000.0;
     println!("parsed {} tiles in {:.0} ms, serialized in {:.0} ms", file.tiles.len(), ms(t0, t1), ms(t1, t2));
+    // Older files are saved with the current set version; compare everything else.
+    if file.header.version != SET_VERSION {
+        println!("set version {} saved as {SET_VERSION}", file.header.version);
+        rewritten[4..8].copy_from_slice(&original[4..8]);
+    }
     if original.len() != rewritten.len() {
         println!("FAIL: size {} vs {}", original.len(), rewritten.len());
         return Ok(ExitCode::FAILURE);

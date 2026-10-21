@@ -83,6 +83,18 @@ fn round_trip() {
 }
 
 #[test]
+fn old_set_version_is_read_and_saved_as_current() {
+    let mut bytes = make_file().serialize().unwrap();
+    assert_eq!(bytes[4..8], SET_VERSION.to_le_bytes());
+    bytes[4..8].copy_from_slice(&SET_VERSION_OLD.to_le_bytes());
+    let f = NavMeshFile::parse(&bytes).unwrap();
+    assert_eq!(f.header.version, SET_VERSION_OLD);
+    let saved = f.serialize().unwrap();
+    assert_eq!(saved[4..8], SET_VERSION.to_le_bytes());
+    assert_eq!(saved[8..], bytes[8..]);
+}
+
+#[test]
 fn offset_table_points_at_records_by_slot() {
     let mut f = make_file();
     f.header.max_tiles = 4;

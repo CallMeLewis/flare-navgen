@@ -1,7 +1,7 @@
 # DayZ navmesh file format (`.nm`)
 
 Status: **verified**. `dznav roundtrip` parses and re-serializes the shipped Chernarus, Livonia and
-Sakhal navmeshes byte for byte (`DZ\worlds\<world>\navmesh\navmesh.nm`, game version 1.27/1.28).
+Sakhal navmeshes byte for byte (`DZ\worlds\<world>\navmesh\navmesh.nm`, game versions 1.27–1.30).
 
 All values are little-endian. The layout is RecastDemo's "tile mesh set" extended by Bohemia
 Interactive. Detour is compiled with `DT_POLYREF64`.
@@ -11,7 +11,7 @@ Interactive. Detour is compiled with `DT_POLYREF64`.
 | Offset | Size | Field |
 |---|---|---|
 | 0 | 4 | magic `'MSET'` (bytes `TESM`) |
-| 4 | 4 | set version, `7` |
+| 4 | 4 | set version: `9` since DayZ 1.30, `7` before (see below) |
 | 8 | 4 | `numTiles` |
 | 12 | 4 | `tilesX` – grid width in tiles |
 | 16 | 4 | `tilesZ` – grid height in tiles |
@@ -25,6 +25,10 @@ Interactive. Detour is compiled with `DT_POLYREF64`.
 
 The game's loader skips the offset table (using `maxTiles`) and reads `numTiles` tile records
 sequentially. The loader aborts if any record has `tileRef == 0` or `dataSize == 0`.
+
+The game only loads its own set version ("Navmesh could not be loaded: Invalid version"). DayZ 1.30
+went from version 7 to 9 without changing the layout: everything below is the same in both. dznav
+reads either and always saves version 9.
 
 Shipped maps have a tile in every grid cell, including open sea. Files saved after generating a
 range only contain the generated tiles: `numTiles < maxTiles`, and the table

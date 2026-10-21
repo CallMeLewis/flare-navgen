@@ -13,7 +13,7 @@ use memmap2::Mmap;
 use crate::bytes::Cursor;
 use crate::error::{Error, Result, format_err, io_err};
 use crate::format::{
-    MeshHeader, NavMeshFile, SET_MAGIC, SET_VERSION, SetHeader, Tile, TileRecordHeader, check_tile_header,
+    MeshHeader, NavMeshFile, SET_MAGIC, SET_VERSION, SET_VERSION_OLD, SetHeader, Tile, TileRecordHeader, check_tile_header,
 };
 
 /// Where one tile's record is in the file, with the tile's header.
@@ -58,7 +58,7 @@ impl NavMeshIndex {
         if header.magic != SET_MAGIC {
             return format_err("Invalid header format (bad magic)");
         }
-        if header.version != SET_VERSION {
+        if header.version != SET_VERSION && header.version != SET_VERSION_OLD {
             return format_err(format!("Invalid version {}", header.version));
         }
         if header.num_tiles < 0 {
